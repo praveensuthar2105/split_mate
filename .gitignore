@@ -1,0 +1,37 @@
+# Environment variables
+.env
+backend/.env
+
+# Stitch folder
+stitch_splitmate_upi_expense_tracker/
+
+# IDE and build files
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Build directories
+target/
+build/
+.gradle/
+*.class
+*.jar
+*.war
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if any)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
