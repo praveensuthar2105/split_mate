@@ -27,25 +27,29 @@ fun ProfileScoreScreen(
     onBackClick: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    var editingName by remember { mutableStateOf(false) }
-    var tempName by remember { mutableStateOf("") }
-    var editingUpiId by remember { mutableStateOf(false) }
-    var tempUpiId by remember { mutableStateOf("") }
-    
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    ProfileScoreScreenContent(
+        uiState = uiState,
+        onUpdateName = { viewModel.updateName(it) },
+        onUpdateUpiId = { viewModel.updateUpiId(it) },
+        onBackClick = onBackClick
+    )
+}
+
+@Composable
+fun ProfileScoreScreenContent(
+    uiState: com.splitmate.android.ui.profile.ProfileUiState,
+    onUpdateName: (String) -> Unit,
+    onUpdateUpiId: (String) -> Unit,
+    onBackClick: () -> Unit
+) {
+    var editingName by remember { mutableStateOf(false) }
+    var tempName by remember(uiState.user.name) { mutableStateOf(uiState.user.name) }
+    var editingUpiId by remember { mutableStateOf(false) }
+    var tempUpiId by remember(uiState.user.upiId) { mutableStateOf(uiState.user.upiId ?: "") }
+    
     val user = uiState.user
-    
-    LaunchedEffect(user.name) {
-        if (tempName.isEmpty()) {
-            tempName = user.name
-        }
-    }
-    
-    LaunchedEffect(user.upiId) {
-        if (tempUpiId.isEmpty()) {
-            tempUpiId = user.upiId ?: ""
-        }
-    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -148,7 +152,7 @@ fun ProfileScoreScreen(
                         )
                         Button(
                             onClick = {
-                                viewModel.updateName(tempName)
+                                onUpdateName(tempName)
                                 editingName = false
                             },
                             enabled = !uiState.isSaving
@@ -234,7 +238,7 @@ fun ProfileScoreScreen(
                             )
                             Button(
                                 onClick = {
-                                    viewModel.updateUpiId(tempUpiId)
+                                    onUpdateUpiId(tempUpiId)
                                     editingUpiId = false
                                 },
                                 modifier = Modifier.padding(start = 8.dp),
