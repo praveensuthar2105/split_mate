@@ -28,6 +28,8 @@ public class Group {
 
     private String photoUrl;
     private String createdBy;
+    @Builder.Default
+    private String groupType = "friends";
     private boolean archived;
 
     @CreationTimestamp

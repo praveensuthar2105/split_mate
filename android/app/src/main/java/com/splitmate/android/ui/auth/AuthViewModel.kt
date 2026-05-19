@@ -72,8 +72,10 @@ class AuthViewModel @Inject constructor(
                 val response = authApi.verifyOtp(VerifyOtpRequest(phone, otp))
                 if (response.isSuccessful && response.body() != null) {
                     // Extract token and save to persistent storage
-                    val token = response.body()!!.token
+                    val body = response.body()!!
+                    val token = body.token
                     tokenManager.saveToken(token)
+                    tokenManager.saveUserId(body.userId)
                     
                     // Trigger UI navigation by updating state
                     _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }

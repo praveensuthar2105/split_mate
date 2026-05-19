@@ -18,7 +18,7 @@ import com.splitmate.android.data.local.entity.SettlementEntity
         ExpenseEntity::class,
         SettlementEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

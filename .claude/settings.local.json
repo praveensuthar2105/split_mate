@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug *)",
+      "Bash(./gradlew app:dependencies)",
+      "WebSearch",
+      "Bash(./gradlew clean *)",
+      "Bash(./mvnw test *)",
+      "Bash(python3 *)"
+    ]
+  }
+}

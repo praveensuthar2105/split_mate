@@ -21,25 +21,38 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupScreen(
+    viewModel: CreateGroupViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
     onGroupCreated: () -> Unit
 ) {
     var groupName by remember { mutableStateOf("") }
-    var groupDescription by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("Trip") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    val groupTypes = listOf("Trip", "Home", "Couple", "Other")
+    LaunchedEffect(uiState.createdGroupId) {
+        if (uiState.createdGroupId != null) {
+            onGroupCreated()
+        }
+    }
 
-    // Mock contacts
-    val contacts = listOf("Arjun", "Priya", "Rohan", "Neha")
-    val selectedContacts = remember { mutableStateListOf<String>() }
+    LaunchedEffect(uiState.error) {
+        val error = uiState.error ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(error)
+        viewModel.clearError()
+    }
+
+    val groupTypes = listOf("Trip", "Flat", "Office", "Friends")
 
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Row(
                 modifier = Modifier
@@ -62,7 +75,7 @@ fun CreateGroupScreen(
                 Button(
                     onClick = {
                         if (groupName.isNotBlank()) {
-                            onGroupCreated()
+                            viewModel.createGroup(groupName, selectedType)
                         }
                     },
                     modifier = Modifier
@@ -73,9 +86,17 @@ fun CreateGroupScreen(
                         containerColor = Color(0xFF10B981),
                         disabledContainerColor = Color(0xFF334155)
                     ),
-                    enabled = groupName.isNotBlank()
+                    enabled = groupName.isNotBlank() && !uiState.isLoading
                 ) {
-                    Text("Create Group", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (groupName.isNotBlank()) Color.Black else Color(0xFF94A3B8))
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.Black
+                        )
+                    } else {
+                        Text("Create Group", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (groupName.isNotBlank()) Color.Black else Color(0xFF94A3B8))
+                    }
                 }
             }
         }
@@ -157,44 +178,13 @@ fun CreateGroupScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Add Members section
-                Text("Add Members", fontSize = 14.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(bottom = 8.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(contacts) { contact ->
-                        val isSelected = selectedContacts.contains(contact)
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                if (isSelected) selectedContacts.remove(contact) else selectedContacts.add(contact)
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFF1E293B))
-                                    .border(2.dp, if (isSelected) Color(0xFF10B981) else Color.Transparent, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = if (isSelected) Color(0xFF10B981) else Color(0xFF94A3B8)
-                                )
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = contact,
-                                fontSize = 12.sp,
-                                color = if (isSelected) Color.White else Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-                }
+                Text("Members", fontSize = 14.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(bottom = 8.dp))
+                Text(
+                    "Create the group first, then share its invite link from the group screen.",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCBD5E1),
+                    lineHeight = 18.sp
+                )
             }
         }
     }

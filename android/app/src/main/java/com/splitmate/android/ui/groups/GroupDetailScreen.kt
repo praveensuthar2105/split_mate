@@ -1,5 +1,6 @@
 package com.splitmate.android.ui.groups
 
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -19,19 +21,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-import com.splitmate.android.ui.settle.GroupMember
+import com.splitmate.android.ui.analytics.AnalyticsScreen
+import com.splitmate.android.domain.model.GroupAnalytics
+import com.splitmate.android.ui.expense.AddExpenseSheet
 import com.splitmate.android.ui.settle.SettleUpScreen
-import com.splitmate.android.ui.settle.SettlementTransaction
+import com.splitmate.android.ui.groups.BudgetProgressBar
+import com.splitmate.android.domain.model.GroupBudget
 
 data class ExpenseUiModel(
     val id: String, val description: String, val amount: Double,
-    val paidBy: String, val date: String, val categoryIcon: String
+    val paidBy: String, val date: String, val category: String, val categoryIcon: String
 )
 
 @Composable
@@ -39,38 +45,63 @@ fun GroupDetailScreen(
     groupId: String,
     viewModel: GroupDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
-    onAddExpenseClick: () -> Unit
+    onAddExpenseClick: (amount: Double, description: String, splitType: String) -> Unit
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var showAddExpenseSheet by remember { mutableStateOf(false) }
     val tabs = listOf("Expenses", "Settle Up", "Analytics", "Activity")
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val expenses by viewModel.expenses.collectAsStateWithLifecycle()
+    val group by viewModel.group.collectAsStateWithLifecycle()
+    val members by viewModel.members.collectAsStateWithLifecycle()
+    val settlements by viewModel.settlements.collectAsStateWithLifecycle()
+    val uiMessage by viewModel.uiMessage.collectAsStateWithLifecycle()
+    val inviteLink by viewModel.inviteLink.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiMessage) {
+        val message = uiMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.clearMessage()
+    }
+
+    LaunchedEffect(inviteLink) {
+        val link = inviteLink ?: return@LaunchedEffect
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, link)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share SplitMate invite"))
+        viewModel.clearInviteLink()
+    }
 
     // Real values would come from a Group query in the ViewModel
-    val groupName = "Goa Trip 2026"
-    val budgetTotal = 15000.0
+    val groupName = group?.name ?: "Group"
+    val budgetTotal = group?.budgetAmount ?: 0.0
     val budgetSpent = expenses.sumOf { it.amount }
     val budgetPercent = if (budgetTotal > 0) (budgetSpent / budgetTotal).toFloat().coerceIn(0f, 1f) else 0f
 
-    val myBalance = 1250.0
+    val myBalance = group?.balance ?: 0.0
 
-    // Mock Data for Settle Up
-    val mockMembers = listOf(
-        GroupMember("1", "You", "praveen@okaxis"),
-        GroupMember("2", "Priya", "priya@okicici"),
-        GroupMember("3", "Rohan", null)
-    )
-    val mockSettlements = listOf(
-        SettlementTransaction("s1", "1", "2", 450.0, false),
-        SettlementTransaction("s2", "3", "1", 120.0, false)
+    val analytics = GroupAnalytics(
+        groupId = groupId,
+        monthlyTotals = mapOf(
+            "Current" to budgetSpent
+        ),
+        categoryBreakdown = expenses
+            .groupBy { it.categoryIcon }
+            .mapValues { (_, categoryExpenses) -> categoryExpenses.sumOf { it.amount } },
+        totalSpend = budgetSpent
     )
 
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 FloatingActionButton(
-                    onClick = onAddExpenseClick,
+                    onClick = { showAddExpenseSheet = true },
                     containerColor = Color(0xFF10B981),
                     contentColor = Color.Black,
                     shape = RoundedCornerShape(16.dp)
@@ -87,7 +118,7 @@ fun GroupDetailScreen(
                 .padding(paddingValues)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                GroupTopBar(groupName, onBackClick)
+                GroupTopBar(groupName, onBackClick, onInviteClick = viewModel::generateInviteLink)
                 GroupHeaderCard(myBalance, budgetSpent, budgetTotal, budgetPercent)
 
                 TabRow(
@@ -120,20 +151,43 @@ fun GroupDetailScreen(
                 when (selectedTabIndex) {
                     0 -> ExpensesListContent(expenses)
                     1 -> SettleUpScreen(
-                        settlements = mockSettlements,
-                        members = mockMembers,
-                        onMarkSettled = { /* TODO */ }
+                        settlements = settlements,
+                        members = members,
+                        onMarkSettled = viewModel::markSettlementAsSettled
                     )
-                    2 -> CenterTextContent("Analytics coming soon")
+                    2 -> AnalyticsScreen(analytics = analytics)
                     3 -> CenterTextContent("Activity log coming soon")
                 }
             }
         }
     }
+
+    if (showAddExpenseSheet) {
+        AddExpenseSheet(
+            onDismiss = { showAddExpenseSheet = false },
+            onSaveClick = { amount, description, splitType ->
+                showAddExpenseSheet = false
+                if (splitType != "Equal") {
+                    onAddExpenseClick(amount, description, splitType)
+                } else {
+                    viewModel.addExpense(amount, description, splitType)
+                }
+            },
+            onOcrClick = {
+                showAddExpenseSheet = false
+                // For OCR, we might need a different flow later, but for now we navigate
+                onAddExpenseClick(0.0, "", "Itemized")
+            },
+            onVoiceClick = {
+                showAddExpenseSheet = false
+                onAddExpenseClick(0.0, "", "Equal")
+            }
+        )
+    }
 }
 
 @Composable
-private fun GroupTopBar(groupName: String, onBackClick: () -> Unit) {
+private fun GroupTopBar(groupName: String, onBackClick: () -> Unit, onInviteClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -156,8 +210,12 @@ private fun GroupTopBar(groupName: String, onBackClick: () -> Unit) {
             text = groupName,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.White,
+            modifier = Modifier.weight(1f)
         )
+        IconButton(onClick = onInviteClick) {
+            Icon(Icons.Default.Share, contentDescription = "Share invite", tint = Color.White)
+        }
     }
 }
 
@@ -175,20 +233,12 @@ private fun GroupHeaderCard(balance: Double, spent: Double, total: Double, perce
             Text(balancePrefix, fontSize = 13.sp, color = Color(0xFF94A3B8))
             Text("₹${Math.abs(balance).toInt()}", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = balanceColor)
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Group Budget", fontSize = 12.sp, color = Color(0xFF94A3B8))
-                Text("₹${spent.toInt()} / ₹${total.toInt()}", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(Modifier.height(8.dp))
-
-            val barColor = if (percent > 0.9f) Color(0xFFEF4444) else if (percent > 0.7f) Color(0xFFF59E0B) else Color(0xFF10B981)
-            LinearProgressIndicator(
-                progress = percent,
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                color = barColor,
-                trackColor = Color(0xFF0F172A)
+            // Use the new BudgetProgressBar we just created
+            BudgetProgressBar(
+                budget = GroupBudget(groupId = "", totalAmount = total),
+                totalSpend = spent
             )
         }
     }
@@ -235,6 +285,17 @@ private fun ExpenseListItem(expense: ExpenseUiModel) {
             Text(expense.description, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             Spacer(Modifier.height(2.dp))
             Text("${expense.paidBy} paid • ${expense.date}", fontSize = 12.sp, color = Color(0xFF94A3B8))
+            Spacer(Modifier.height(6.dp))
+            AssistChip(
+                onClick = { },
+                label = { Text(expense.category.ifBlank { "Other" }, fontSize = 11.sp) },
+                leadingIcon = { Text(expense.categoryIcon, fontSize = 13.sp) },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = Color(0xFF1E293B),
+                    labelColor = Color(0xFFCBD5E1)
+                ),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+            )
         }
 
         Text("₹${expense.amount.toInt()}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)

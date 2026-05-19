@@ -91,6 +91,13 @@
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 
+		<!-- Twilio -->
+		<dependency>
+			<groupId>com.twilio.sdk</groupId>
+			<artifactId>twilio</artifactId>
+			<version>9.14.0</version>
+		</dependency>
+
 		<!-- DotEnv -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

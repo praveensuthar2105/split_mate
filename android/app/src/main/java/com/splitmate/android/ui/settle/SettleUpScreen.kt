@@ -37,7 +37,7 @@ data class GroupMember(
 fun SettleUpScreen(
     settlements: List<SettlementTransaction>,
     members: List<GroupMember>,
-    onMarkSettled: (String) -> Unit
+    onMarkSettled: (SettlementTransaction) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -75,7 +75,7 @@ fun SettleUpScreen(
                     val intent = Intent(Intent.ACTION_VIEW, uri)
                     context.startActivity(Intent.createChooser(intent, "Pay via UPI"))
                 },
-                onMarkSettled = { onMarkSettled(txn.id) }
+                onMarkSettled = { onMarkSettled(txn) }
             )
         }
     }

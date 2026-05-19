@@ -27,6 +27,7 @@ class TokenManager @Inject constructor(
 ) {
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("jwt_token")
+        private val USER_ID_KEY = stringPreferencesKey("user_id")
     }
 
     /**
@@ -38,6 +39,11 @@ class TokenManager @Inject constructor(
             preferences[TOKEN_KEY]
         }
 
+    val userIdFlow: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[USER_ID_KEY]
+        }
+
     /**
      * Saves the token asynchronously.
      */
@@ -47,12 +53,19 @@ class TokenManager @Inject constructor(
         }
     }
 
+    suspend fun saveUserId(userId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_ID_KEY] = userId
+        }
+    }
+
     /**
      * Clears the token asynchronously. Used during sign-out or when the token expires (401 response).
      */
     suspend fun clearToken() {
         context.dataStore.edit { preferences ->
             preferences.remove(TOKEN_KEY)
+            preferences.remove(USER_ID_KEY)
         }
     }
 }

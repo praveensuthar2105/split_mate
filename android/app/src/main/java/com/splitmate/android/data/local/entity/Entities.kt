@@ -9,6 +9,7 @@ data class GroupEntity(
     val name: String,
     val photoUrl: String?,
     val createdBy: String,
+    val groupType: String,
     val isArchived: Boolean,
     val budgetAmount: Double?,
     val lastActivity: String,

@@ -2,7 +2,8 @@ package com.splitmate.android.data.remote
 
 import com.splitmate.android.data.remote.dto.CreateExpenseRequest
 import com.splitmate.android.data.remote.dto.ExpenseResponse
-import com.splitmate.android.data.remote.dto.SettlementResponse
+import com.splitmate.android.data.remote.dto.MarkSettlementRequest
+import com.splitmate.android.data.remote.dto.SettlementSummaryResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -19,5 +20,11 @@ interface ExpenseApi {
     ): ExpenseResponse
 
     @GET("groups/{id}/settlements")
-    suspend fun getSettlements(@Path("id") groupId: String): List<SettlementResponse>
+    suspend fun getSettlements(@Path("id") groupId: String): SettlementSummaryResponse
+
+    @POST("groups/{id}/settlements/mark")
+    suspend fun markSettlement(
+        @Path("id") groupId: String,
+        @Body request: MarkSettlementRequest
+    )
 }

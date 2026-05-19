@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -50,7 +51,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
+    implementation(libs.androidx.compose.material.icons.extended)
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
@@ -90,6 +92,16 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Firebase
+    implementation(libs.firebase.messaging)
+
+    // ML Kit & CameraX
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

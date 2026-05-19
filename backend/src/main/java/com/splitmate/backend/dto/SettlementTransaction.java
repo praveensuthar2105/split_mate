@@ -12,7 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SettlementTransaction {
+    private String id;
     private String fromUserId;
     private String toUserId;
     private BigDecimal amount;
+    private boolean settled;
 }

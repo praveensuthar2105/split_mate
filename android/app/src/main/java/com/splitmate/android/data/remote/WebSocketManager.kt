@@ -25,7 +25,7 @@ class WebSocketManager @Inject constructor(
     fun connect(groupId: String) {
         stompClient = Stomp.over(
             Stomp.ConnectionProvider.OKHTTP,
-            "ws://10.0.2.2:8080/ws/websocket"
+            "ws://10.0.2.2:8081/ws/websocket"
         )
 
         stompClient?.connect()

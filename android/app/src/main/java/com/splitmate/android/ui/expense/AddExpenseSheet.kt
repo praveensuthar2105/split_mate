@@ -31,7 +31,7 @@ fun AddExpenseSheet(
     var description by remember { mutableStateOf("") }
     var selectedSplit by remember { mutableStateOf("Equal") }
 
-    val splitOptions = listOf("Equal", "Percent", "Itemized", "Custom")
+    val splitOptions = listOf("Equal", "Percentage", "Shares", "Itemized")
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

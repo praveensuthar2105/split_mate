@@ -28,13 +28,14 @@ public class GroupController {
         try {
             String userId = extractUserId(authHeader);
             String name = body.get("name");
+            String groupType = body.getOrDefault("groupType", "friends");
 
             if (name == null || name.isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Group name is required"));
             }
 
-            Group group = groupService.createGroup(name, userId);
+            Group group = groupService.createGroup(name, groupType, userId);
             return ResponseEntity.ok(group);
 
         } catch (Exception e) {

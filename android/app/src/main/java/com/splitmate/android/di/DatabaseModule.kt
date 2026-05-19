@@ -25,7 +25,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "splitmate_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

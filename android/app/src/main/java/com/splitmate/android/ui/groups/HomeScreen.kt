@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 data class GroupUiModel(
     val id: String,
     val name: String,
+    val groupType: String,
     val lastActivity: String,
     val balance: Double,
     val isArchived: Boolean = false
@@ -44,19 +45,22 @@ fun HomeScreen(
 ) {
     // Observe database-backed groups from the ViewModel
     val groups by viewModel.groups.collectAsStateWithLifecycle()
+    val uiMessage by viewModel.uiMessage.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showJoinDialog by remember { mutableStateOf(false) }
+    var inviteText by remember { mutableStateOf("") }
 
-    // Use mock data for testing UI if database is empty
-    val displayGroups = if (groups.isNotEmpty()) groups else listOf(
-        GroupUiModel("1", "Goa Trip 2026", "Rohan added Dinner at Curlies", 1250.0),
-        GroupUiModel("2", "Flat 402", "You paid for Electricity Bill", -450.0),
-        GroupUiModel("3", "Office Lunch Squad", "Arjun settled up", 0.0)
-    )
+    LaunchedEffect(uiMessage) {
+        val message = uiMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.clearMessage()
+    }
 
-    // Calculate balance based on displayGroups so mock data is reflected
-    val totalBalance = displayGroups.sumOf { it.balance }
+    val totalBalance = groups.sumOf { it.balance }
 
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateGroupClick,
@@ -83,6 +87,19 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 HomeTopBar(totalBalance = totalBalance, onProfileClick = onProfileClick)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = { showJoinDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) {
+                        Text("Join with link")
+                    }
+                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -101,7 +118,7 @@ fun HomeScreen(
                         )
                     }
 
-                    if (displayGroups.isEmpty()) {
+                    if (groups.isEmpty()) {
                         item {
                             Text(
                                 "No groups yet. Tap + to create one!",
@@ -111,12 +128,43 @@ fun HomeScreen(
                         }
                     }
 
-                    items(displayGroups) { group ->
+                    items(groups) { group ->
                         GroupCard(group = group, onClick = { onGroupClick(group.id) })
                     }
                 }
             }
         }
+    }
+
+    if (showJoinDialog) {
+        AlertDialog(
+            onDismissRequest = { showJoinDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.joinGroup(inviteText)
+                        inviteText = ""
+                        showJoinDialog = false
+                    }
+                ) {
+                    Text("Join")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showJoinDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Join Group") },
+            text = {
+                OutlinedTextField(
+                    value = inviteText,
+                    onValueChange = { inviteText = it },
+                    label = { Text("Invite link or group id") },
+                    singleLine = true
+                )
+            }
+        )
     }
 }
 
@@ -234,7 +282,7 @@ private fun GroupCard(group: GroupUiModel, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = group.lastActivity,
+                    text = "${group.groupType.replaceFirstChar { it.uppercase() }} • ${group.lastActivity.ifBlank { "No expenses yet" }}",
                     fontSize = 12.sp,
                     color = Color(0xFF94A3B8),
                     maxLines = 1,

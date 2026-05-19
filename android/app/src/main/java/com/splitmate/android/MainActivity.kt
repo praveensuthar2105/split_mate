@@ -8,18 +8,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitmate.android.ui.auth.LoginScreen
-import com.splitmate.android.ui.expense.AddExpenseSheet
 import com.splitmate.android.ui.groups.GroupDetailScreen
 import com.splitmate.android.ui.groups.HomeScreen
 import com.splitmate.android.ui.theme.SplitMateTheme
@@ -37,8 +34,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     
-                    var showAddExpenseSheet by remember { mutableStateOf(false) }
-
                     // Setup Jetpack Navigation with custom animations
                     NavHost(
                         navController = navController, 
@@ -98,8 +93,14 @@ class MainActivity : ComponentActivity() {
                             GroupDetailScreen(
                                 groupId = groupId,
                                 onBackClick = { navController.popBackStack() },
-                                onAddExpenseClick = {
-                                    showAddExpenseSheet = true
+                                onAddExpenseClick = { amount, description, splitType ->
+                                    if (splitType == "Itemized") {
+                                        navController.navigate("itemized_split/$groupId/$amount/$description")
+                                    } else if (splitType == "Percentage") {
+                                        navController.navigate("percentage_split/$groupId/$amount/$description")
+                                    } else if (splitType == "Shares") {
+                                        navController.navigate("shares_split/$groupId/$amount/$description")
+                                    }
                                 }
                             )
                         }
@@ -116,29 +117,86 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable("itemized_split") {
+                        composable(
+                            route = "itemized_split/{groupId}/{amount}/{description}",
+                            arguments = listOf(
+                                navArgument("groupId") { type = NavType.StringType },
+                                navArgument("amount") { type = NavType.FloatType },
+                                navArgument("description") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val gid = backStackEntry.arguments?.getString("groupId") ?: ""
+                            val amt = backStackEntry.arguments?.getFloat("amount")?.toDouble() ?: 0.0
+                            val desc = backStackEntry.arguments?.getString("description") ?: ""
+
+                            val viewModel: com.splitmate.android.ui.groups.GroupDetailViewModel = hiltViewModel(
+                                navController.getBackStackEntry("group_detail/$gid")
+                            )
+                            val membersState = viewModel.members.collectAsStateWithLifecycle()
+
                             com.splitmate.android.ui.expense.ItemizedSplitScreen(
-                                onBackClick = { navController.popBackStack() },
-                                onSaveClick = {
+                                lineItems = listOf(com.splitmate.android.domain.model.LineItem(desc, amt)),
+                                members = membersState.value,
+                                onConfirm = { customSplits ->
+                                    viewModel.addExpense(amt, desc, "ITEMIZED", customSplits)
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(
+                            route = "percentage_split/{groupId}/{amount}/{description}",
+                            arguments = listOf(
+                                navArgument("groupId") { type = NavType.StringType },
+                                navArgument("amount") { type = NavType.FloatType },
+                                navArgument("description") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val gid = backStackEntry.arguments?.getString("groupId") ?: ""
+                            val amt = backStackEntry.arguments?.getFloat("amount")?.toDouble() ?: 0.0
+                            val desc = backStackEntry.arguments?.getString("description") ?: ""
+
+                            val viewModel: com.splitmate.android.ui.groups.GroupDetailViewModel = hiltViewModel(
+                                navController.getBackStackEntry("group_detail/$gid")
+                            )
+                            val membersState = viewModel.members.collectAsStateWithLifecycle()
+
+                            com.splitmate.android.ui.expense.PercentageSplitScreen(
+                                totalAmount = amt,
+                                members = membersState.value,
+                                onConfirm = { customSplits ->
+                                    viewModel.addExpense(amt, desc, "PERCENTAGE", customSplits)
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(
+                            route = "shares_split/{groupId}/{amount}/{description}",
+                            arguments = listOf(
+                                navArgument("groupId") { type = NavType.StringType },
+                                navArgument("amount") { type = NavType.FloatType },
+                                navArgument("description") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val gid = backStackEntry.arguments?.getString("groupId") ?: ""
+                            val amt = backStackEntry.arguments?.getFloat("amount")?.toDouble() ?: 0.0
+                            val desc = backStackEntry.arguments?.getString("description") ?: ""
+
+                            val viewModel: com.splitmate.android.ui.groups.GroupDetailViewModel = hiltViewModel(
+                                navController.getBackStackEntry("group_detail/$gid")
+                            )
+                            val membersState = viewModel.members.collectAsStateWithLifecycle()
+
+                            com.splitmate.android.ui.expense.SharesSplitScreen(
+                                totalAmount = amt,
+                                members = membersState.value,
+                                onConfirm = { customSplits ->
+                                    viewModel.addExpense(amt, desc, "SHARES", customSplits)
                                     navController.popBackStack()
                                 }
                             )
                         }
                     }
 
-                    if (showAddExpenseSheet) {
-                        AddExpenseSheet(
-                            onDismiss = { showAddExpenseSheet = false },
-                            onSaveClick = { amount, description, splitType ->
-                                showAddExpenseSheet = false
-                                if (splitType == "Itemized") {
-                                    navController.navigate("itemized_split")
-                                }
-                            },
-                            onOcrClick = { },
-                            onVoiceClick = { }
-                        )
-                    }
                 }
             }
         }

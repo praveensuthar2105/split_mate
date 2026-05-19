@@ -24,4 +24,7 @@ interface AuthApi {
 
     @PUT("auth/profile")
     suspend fun updateProfile(@Body request: ProfileRequest): Response<UserResponse>
+
+    @retrofit2.http.GET("auth/me")
+    suspend fun getCurrentUser(): Response<UserResponse>
 }

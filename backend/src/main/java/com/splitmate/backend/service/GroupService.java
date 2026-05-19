@@ -16,9 +16,10 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
 
-    public Group createGroup(String name, String createdBy) {
+    public Group createGroup(String name, String groupType, String createdBy) {
         Group group = Group.builder()
                 .name(name)
+                .groupType(normalizeGroupType(groupType))
                 .createdBy(createdBy)
                 .build();
         group = groupRepository.save(group);
@@ -87,6 +88,17 @@ public class GroupService {
 
     public List<GroupMember> getGroupMembers(String groupId) {
         return groupMemberRepository.findByGroupId(groupId);
+    }
+
+    private String normalizeGroupType(String groupType) {
+        if (groupType == null || groupType.isBlank()) {
+            return "friends";
+        }
+        String normalized = groupType.trim().toLowerCase();
+        return switch (normalized) {
+            case "trip", "flat", "office", "friends" -> normalized;
+            default -> "friends";
+        };
     }
 
     public boolean isGroupMember(String groupId, String userId) {

@@ -21,6 +21,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
     private final ExpenseCategorizationService expenseCategorizationService;
+    private final BudgetService budgetService;
 
     public Expense createExpense(
             String groupId,
@@ -52,6 +53,8 @@ public class ExpenseService {
                 customSplits);
 
         splits.forEach(expenseSplitRepository::save);
+
+        budgetService.checkBudgetAlert(groupId);
 
         return expense;
     }
@@ -168,8 +171,8 @@ public class ExpenseService {
         if (splitType == null || splitType.isBlank()) {
             throw new IllegalArgumentException("Split type is required");
         }
-        if (participantIds == null || participantIds.size() < 2) {
-            throw new IllegalArgumentException("At least two participants are required");
+        if (participantIds == null || participantIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one participant is required");
         }
 
         SplitType type = SplitType.valueOf(splitType.toUpperCase());

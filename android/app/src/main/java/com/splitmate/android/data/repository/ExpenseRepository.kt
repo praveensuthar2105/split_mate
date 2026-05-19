@@ -7,6 +7,9 @@ import com.splitmate.android.data.local.entity.SettlementEntity
 import com.splitmate.android.data.remote.ExpenseApi
 import com.splitmate.android.data.remote.dto.CreateExpenseRequest
 import com.splitmate.android.data.remote.dto.ExpenseUpdate
+import com.splitmate.android.data.remote.dto.ExpenseResponse
+import com.splitmate.android.data.remote.dto.MarkSettlementRequest
+import com.splitmate.android.data.remote.dto.SettlementResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -26,13 +29,7 @@ class ExpenseRepository @Inject constructor(
 
         try {
             val remote = api.getExpenses(groupId)
-            val entities = remote.map {
-                ExpenseEntity(
-                    id = it.id, groupId = it.groupId, description = it.description,
-                    amount = it.amount, paidBy = it.paidBy, paidByName = it.paidByName,
-                    category = it.category, splitType = it.splitType, date = it.date
-                )
-            }
+            val entities = remote.map { it.toEntity() }
             expenseDao.insertAll(entities)
         } catch (e: Exception) {
             // Ignore offline network errors
@@ -44,13 +41,7 @@ class ExpenseRepository @Inject constructor(
     suspend fun addExpense(groupId: String, request: CreateExpenseRequest) {
         // Optimistic UI updates could be added here, but for simplicity we await network
         val created = api.addExpense(groupId, request)
-        expenseDao.insert(
-            ExpenseEntity(
-                id = created.id, groupId = created.groupId, description = created.description,
-                amount = created.amount, paidBy = created.paidBy, paidByName = created.paidByName,
-                category = created.category, splitType = created.splitType, date = created.date
-            )
-        )
+        expenseDao.insert(created.toEntity())
     }
 
     fun getSettlements(groupId: String): Flow<List<SettlementEntity>> = flow {
@@ -58,40 +49,74 @@ class ExpenseRepository @Inject constructor(
         if (cached.isNotEmpty()) emit(cached)
 
         try {
-            val remote = api.getSettlements(groupId)
-            val entities = remote.map {
-                SettlementEntity(
-                    id = it.id, groupId = it.groupId, fromUserId = it.fromUserId,
-                    fromUserName = it.fromUserName, toUserId = it.toUserId,
-                    toUserName = it.toUserName, amount = it.amount, isSettled = it.isSettled
-                )
-            }
-            settlementDao.insertAll(entities)
+            refreshSettlements(groupId)
         } catch (e: Exception) {}
 
         emitAll(settlementDao.getSettlements(groupId))
     }
 
+    suspend fun refreshSettlements(groupId: String) {
+        val remote = api.getSettlements(groupId)
+        val entities = remote.settlements.map { it.toEntity(remote.groupId) }
+        settlementDao.insertAll(entities)
+    }
+
     suspend fun handleRemoteUpdate(update: ExpenseUpdate) {
         update.expense?.let { remote ->
-            expenseDao.insert(
-                ExpenseEntity(
-                    id = remote.id, groupId = remote.groupId, description = remote.description,
-                    amount = remote.amount, paidBy = remote.paidBy, paidByName = remote.paidByName,
-                    category = remote.category, splitType = remote.splitType, date = remote.date
-                )
-            )
+            expenseDao.insert(remote.toEntity())
         }
 
         update.settlements?.let { remoteSettlements ->
-            val entities = remoteSettlements.map {
-                SettlementEntity(
-                    id = it.id, groupId = it.groupId, fromUserId = it.fromUserId,
-                    fromUserName = it.fromUserName, toUserId = it.toUserId,
-                    toUserName = it.toUserName, amount = it.amount, isSettled = it.isSettled
-                )
-            }
+            val entities = remoteSettlements.map { it.toEntity(update.expense?.groupId.orEmpty()) }
             settlementDao.insertAll(entities)
         }
+    }
+
+    suspend fun markSettlementAsSettled(
+        groupId: String,
+        settlementId: String,
+        fromUserId: String,
+        toUserId: String,
+        amount: Double
+    ) {
+        api.markSettlement(
+            groupId,
+            MarkSettlementRequest(
+                fromUserId = fromUserId,
+                toUserId = toUserId,
+                amount = amount
+            )
+        )
+        settlementDao.markAsSettled(settlementId)
+        refreshSettlements(groupId)
+    }
+
+    private fun ExpenseResponse.toEntity(): ExpenseEntity {
+        return ExpenseEntity(
+            id = id,
+            groupId = groupId,
+            description = description,
+            amount = amount,
+            paidBy = paidBy,
+            paidByName = paidByName ?: paidBy.take(8),
+            category = category,
+            splitType = splitType,
+            date = date ?: createdAt?.take(10).orEmpty()
+        )
+    }
+
+    private fun SettlementResponse.toEntity(fallbackGroupId: String): SettlementEntity {
+        val resolvedGroupId = groupId ?: fallbackGroupId
+        val resolvedId = id ?: "$resolvedGroupId:$fromUserId:$toUserId:${amount}"
+        return SettlementEntity(
+            id = resolvedId,
+            groupId = resolvedGroupId,
+            fromUserId = fromUserId,
+            fromUserName = fromUserName ?: fromUserId.take(8),
+            toUserId = toUserId,
+            toUserName = toUserName ?: toUserId.take(8),
+            amount = amount,
+            isSettled = isSettled ?: false
+        )
     }
 }
