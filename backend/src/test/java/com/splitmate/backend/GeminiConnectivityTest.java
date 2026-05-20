@@ -62,7 +62,7 @@ public class GeminiConnectivityTest {
 
         String project = System.getenv("GOOGLE_CLOUD_PROJECT_ID");
         if (project == null) {
-            System.out.println("GOOGLE_CLOUD_PROJECT_ID is not set in the test environment. Recommended: ai-resume-builder-496605");
+            System.out.println("GOOGLE_CLOUD_PROJECT_ID is not set in the test environment. Recommended: splitmate-495919");
         } else {
             assertNotNull(project, "GOOGLE_CLOUD_PROJECT_ID must be set");
         }

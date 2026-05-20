@@ -53,7 +53,7 @@ SplitMate is a multi-phase mobile app (Android) + backend (Spring Boot) project.
 **Status:** FULLY IMPLEMENTED (Completed in this session)
 
 **Completed Components:**
-- ✅ Google Cloud service account setup (project: ai-resume-builder-496605)
+- ✅ Google Cloud service account setup (project: splitmate-495919)
 - ✅ Vertex AI enabled & credentials configured
 - ✅ `GeminiService.java` — Spring AI wrapper for Vertex AI/Gemini 2.5 Flash
 - ✅ `GeminiController.java` — REST endpoints for AI features

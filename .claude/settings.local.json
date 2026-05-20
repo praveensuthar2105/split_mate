@@ -6,7 +6,8 @@
       "WebSearch",
       "Bash(./gradlew clean *)",
       "Bash(./mvnw test *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(curl *)"
     ]
   }
 }

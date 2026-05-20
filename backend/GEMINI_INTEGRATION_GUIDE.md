@@ -20,7 +20,7 @@ The `GeminiService` provides a clean interface to call Google Vertex AI / Gemini
 2. **Environment Variables** (set in `.env`)
    ```dotenv
    GOOGLE_APPLICATION_CREDENTIALS=./keys/gcp-sa.json
-   GOOGLE_CLOUD_PROJECT_ID=ai-resume-builder-496605
+   GOOGLE_CLOUD_PROJECT_ID=splitmate-495919
    GEMINI_LOCATION=us-central1
    GEMINI_MODEL=gemini-2.5-flash
    ```
@@ -319,7 +319,7 @@ Test-Path "C:\path\to\gcp-sa.json"
 **Solution:** Ensure `GOOGLE_CLOUD_PROJECT_ID` is in `.env`
 ```bash
 echo $env:GOOGLE_CLOUD_PROJECT_ID
-# Should output: ai-resume-builder-496605
+# Should output: splitmate-495919
 ```
 
 ### Issue: Gemini API quota exceeded
